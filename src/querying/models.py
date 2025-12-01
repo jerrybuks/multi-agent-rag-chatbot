@@ -8,13 +8,26 @@ from config import MIN_SIMILARITY
 
 class QueryRequest(BaseModel):
     """Request model for query endpoint."""
-    query: str = Field(..., description="User's question or query")
+    query: str = Field(
+        ...,
+        description="User's question or query",
+        example="How do I update my payment method for my subscription?"
+    )
     min_similarity: Optional[float] = Field(
         default=MIN_SIMILARITY,
         ge=0.0,
         le=1.0,
-        description="Minimum similarity threshold (0.0 to 1.0) for retrieved context. Defaults to config value."
+        description="Minimum similarity threshold (0.0 to 1.0) for retrieved context. Defaults to config value.",
+        example=0.78
     )
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "query": "How do I update my payment method for my subscription?",
+                "min_similarity": 0.78
+            }
+        }
 
 
 class SourceResponse(BaseModel):
@@ -41,4 +54,6 @@ class QueryResponse(BaseModel):
     sources: List[SourceResponse] = Field(default_factory=list, description="Sources used to generate the response")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata about the processing")
     session_id: str = Field(..., description="Session ID for this conversation")
+    quality_score: Optional[float] = Field(None, ge=1.0, le=10.0, description="Automatic quality score (1-10) from Langfuse evaluator")
+    quality_reasoning: Optional[str] = Field(None, description="Reasoning for the quality score")
 

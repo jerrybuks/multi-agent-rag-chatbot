@@ -106,6 +106,10 @@ def setup_query_routes(orchestrator: Orchestrator):
                         )
                     )
             
+            # Extract quality score from metadata if available
+            quality_score = response.metadata.get("quality_score")
+            quality_reasoning = response.metadata.get("quality_reasoning")
+            
             # Build response
             return QueryResponse(
                 content=response.content,
@@ -117,6 +121,8 @@ def setup_query_routes(orchestrator: Orchestrator):
                     "routing_mode": response.routing_mode.value,
                 },
                 session_id=session_id,  # Use auto-generated session_id
+                quality_score=quality_score,
+                quality_reasoning=quality_reasoning,
             )
             
         except Exception as e:

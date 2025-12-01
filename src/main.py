@@ -56,9 +56,9 @@ def create_app() -> FastAPI:
                 "query": {
                     "POST /api/v1/query": "Process a user query through the orchestrator",
                     "GET /api/v1/agents": "List all available specialist agents",
-                    "GET /api/v1/sessions/{session_id}/history": "Get conversation history for a session",
-                    "DELETE /api/v1/sessions/{session_id}": "Clear conversation history for a session",
-                },
+                       "GET /api/v1/sessions/{session_id}/history": "Get conversation history for a session",
+                       "DELETE /api/v1/sessions/{session_id}": "Clear conversation history for a session",
+                   },
                 "docs": {
                     "GET /docs": "Interactive API documentation (Swagger UI)",
                     "GET /redoc": "Alternative API documentation (ReDoc)",
