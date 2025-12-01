@@ -1,0 +1,35 @@
+"""Configuration package."""
+
+from .config import (
+    PROJECT_ROOT,
+    DATA_DIR,
+    HANDBOOKS_DIR,
+    OUTPUT_DIR,
+    JSONL_DIR,
+    CHUNK_SIZE,
+    CHUNK_OVERLAP,
+    OPENAI_MODEL,
+    LLM_MODEL,
+    VECTOR_STORE_TYPE,
+    VECTOR_STORE_PATH,
+    MIN_SIMILARITY,
+    HEADERS_TO_SPLIT_ON,
+    TEXT_SPLITTER_SEPARATORS,
+)
+
+__all__ = [
+    "PROJECT_ROOT",
+    "DATA_DIR",
+    "HANDBOOKS_DIR",
+    "OUTPUT_DIR",
+    "JSONL_DIR",
+    "CHUNK_SIZE",
+    "CHUNK_OVERLAP",
+    "OPENAI_MODEL",
+    "LLM_MODEL",
+    "VECTOR_STORE_TYPE",
+    "VECTOR_STORE_PATH",
+    "MIN_SIMILARITY",
+    "HEADERS_TO_SPLIT_ON",
+    "TEXT_SPLITTER_SEPARATORS",
+]
