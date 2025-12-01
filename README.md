@@ -73,6 +73,46 @@ The server will be available at `http://localhost:8000`
 
 - **API Docs**: http://localhost:8000/docs
 
+## Running Tests
+
+The system includes a test runner that uses golden datasets to validate the chatbot's responses with automatic quality scoring via Langfuse.
+
+### Quick Start
+
+Run all tests:
+```bash
+python tests/test_runner.py
+```
+
+Run a specific dataset:
+```bash
+python tests/test_runner.py --dataset finance.jsonl
+```
+
+Run with custom settings:
+```bash
+python tests/test_runner.py \
+  --dataset finance.jsonl \
+  --max-tests 5 \
+  --min-similarity 0.75
+```
+
+### Available Datasets
+
+- `finance.jsonl` - Finance agent test cases
+- `hr.jsonl` - HR agent test cases
+- `legal.jsonl` - Legal agent test cases
+- `tech.jsonl` - Tech agent test cases
+- `general_knowledge.jsonl` - General knowledge test cases
+- `multi_agent.jsonl` - Multi-agent routing test cases
+- `routing.jsonl` - Routing accuracy test cases
+
+### Test Output
+
+Each test displays:
+- Quality score (1-10) from Langfuse evaluator
+- Pass/fail status (score ≥ 7.0 is passing)
+- Reasoning for the quality score
 
 ## Project Structure
 
@@ -103,4 +143,10 @@ The server will be available at `http://localhost:8000`
 - **[📊 Technical Report](reports/REPORT.md)** - Comprehensive architecture, design decisions, and system overview
 - **[🔄 Flow Diagrams](FLOW_DIAGRAM.md)** - Component interaction diagram and key decision points
 - **[📚 Golden Datasets](data/golden_datasets/README.md)** - Test dataset documentation
+
+## Known Limitations
+
+1. **Session Management**: Session IDs are generated from IP addresses, which means users behind the same NAT/proxy will share session context.
+2. **Context Window**: Conversation history is limited to the last 20 messages to prevent context bloat and maintain performance.
+3. **Vector Store**: Vector stores are preloaded at startup and stored in memory; very large knowledge bases may require additional memory resources.
 

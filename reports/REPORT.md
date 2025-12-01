@@ -289,6 +289,21 @@ Every response is automatically evaluated using **LLM-as-a-Judge**:
 - **Pass Threshold**: 7.0
 - **Automatic Storage**: Scores stored in Langfuse and linked to traces
 
+### Langfuse Scores Dashboard
+
+The Langfuse Scores dashboard provides a centralized view of all quality evaluations, allowing you to monitor, filter, and analyze response quality over time.
+
+![Langfuse Scores Dashboard](./langfuse_scores_dashboard.png)
+
+*Figure: Langfuse Scores dashboard showing `rag_quality_score` evaluations with values of 9, 9, and 8. Each score includes detailed comments explaining the quality assessment, enabling easy identification of high-performing responses and areas for improvement.*
+
+**Key Features:**
+- **Score Filtering**: Filter by score name (`rag_quality_score`), value range, date range, and metadata
+- **Score Details**: View individual scores with associated comments and reasoning
+- **Analytics**: Track score distributions and trends over time
+- **Source Tracking**: Identify which API calls generated each score
+- **Metadata Support**: Attach custom metadata to scores for advanced filtering
+
 ### Integration
 
 ```python
@@ -305,6 +320,7 @@ quality_score = self.evaluator.evaluate_response(
 - ✅ **Continuous monitoring** - every response scored
 - ✅ **Quality trends** - track performance over time
 - ✅ **Issue detection** - identify low-quality responses automatically
+- ✅ **Centralized Dashboard** - view all scores in one place with filtering and analytics
 
 ---
 
@@ -559,20 +575,68 @@ python tests/test_runner.py \
 
 ### Langfuse Dashboard
 
+The Langfuse dashboard provides comprehensive observability into every aspect of the system's operation. Every query is automatically traced, showing the complete execution flow from routing to response generation.
+
+![Langfuse Tracing Dashboard](./langfuse_tracing_dashboard.png)
+
+*Figure: Langfuse tracing dashboard showing a complete trace for `orchestrator_process_query` with quality score of 9.00. The trace displays the hierarchical execution flow, input/output details, and automatic quality evaluation.*
+
+**Key Features:**
+
 **Traces:**
-- Every query creates a trace
-- Shows full execution path
-- Includes agent decisions and tool usage
+- Every query creates a detailed trace
+- Shows full execution path with hierarchical breakdown
+- Includes agent decisions, routing logic, and tool usage
+- Timeline view shows execution duration for each step
+
+**Example Trace Breakdown:**
+- `orchestrator_process_query` (12.14s)
+  - `orchestrator_detect_multi_agent` (2.61s)
+    - `RunnableSequence` → `ChatPromptTemplate` → `ChatOpenAI` → `JsonOutputParser`
+  - `agent_process_query` (6.12s)
+    - `AgentExecutor` → `LLMChain` → RAG Tool execution
 
 **Scores:**
-- Quality scores linked to traces
-- Filter by `rag_quality_score`
-- Analyze trends over time
+- Quality scores automatically linked to traces
+- Filter by `rag_quality_score` to find high/low quality responses
+- Analyze trends over time to identify patterns
+- Each score includes detailed reasoning from the LLM evaluator
+
+**Trace Details:**
+- **Input**: Query, session_id, min_similarity threshold
+- **Output**: Response content, agents used, routing mode, sources
+- **Metadata**: Quality score, reasoning, conversation length, processing mode
+- **Token Usage**: Track LLM token consumption per operation
+- **Latency**: Performance metrics for each step
+
+### Observations View
+
+The Observations view provides a granular, step-by-step breakdown of every component execution within a trace, showing the complete execution flow from orchestrator to agent to RAG tools.
+
+![Langfuse Observations Dashboard](./langfuse_observations_dashboard.png)
+
+*Figure: Langfuse Observations dashboard showing detailed execution steps including `langfuse_evaluator_score_response` with quality scores (9.0), `AgentExecutor`, `finance_rag_search` tool calls, `ChatOpenAI` LLM invocations, and `LLMChain` operations. Each observation shows input/output data, timestamps, and component types.*
+
+**Key Observations Shown:**
+- **Evaluator Execution**: `langfuse_evaluator_score_response` entries showing automatic quality scoring (e.g., score: 9.0) with reasoning
+- **Agent Operations**: `AgentExecutor` observations showing agent decision-making process
+- **RAG Tool Calls**: Tool executions like `finance_rag_search` with similarity scores and retrieved context
+- **LLM Invocations**: `ChatOpenAI` and `LLMChain` observations showing prompt inputs and generated outputs
+- **Orchestrator Steps**: `orchestrator_detect_multi_agent` and `orchestrator_process_query` showing routing decisions
+- **Component Types**: Visual icons distinguish between agents, tools, chains, and custom spans
+
+**Filtering & Analysis:**
+- Filter by component type (AgentExecutor, ChatOpenAI, Tool, etc.)
+- Filter by name, trace name, level, model, and metadata
+- Search across all observations
+- View input/output for each step to understand data flow
 
 **Metrics:**
-- Response times
-- Agent usage patterns
+- Response times across different agents
+- Agent usage patterns and routing decisions
 - Quality score distributions
+- Token usage and cost tracking
+- Component-level performance analysis
 
 ---
 

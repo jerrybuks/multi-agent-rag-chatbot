@@ -8,13 +8,26 @@ from config import MIN_SIMILARITY
 
 class QueryRequest(BaseModel):
     """Request model for query endpoint."""
-    query: str = Field(..., description="User's question or query")
+    query: str = Field(
+        ...,
+        description="User's question or query",
+        example="How do I update my payment method for my subscription?"
+    )
     min_similarity: Optional[float] = Field(
         default=MIN_SIMILARITY,
         ge=0.0,
         le=1.0,
-        description="Minimum similarity threshold (0.0 to 1.0) for retrieved context. Defaults to config value."
+        description="Minimum similarity threshold (0.0 to 1.0) for retrieved context. Defaults to config value.",
+        example=0.78
     )
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "query": "How do I update my payment method for my subscription?",
+                "min_similarity": 0.78
+            }
+        }
 
 
 class SourceResponse(BaseModel):
