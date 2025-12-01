@@ -11,7 +11,7 @@ src_path = Path(__file__).parent
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from agents import Orchestrator
+from querying.agents import Orchestrator
 from querying import setup_query_routes
 
 

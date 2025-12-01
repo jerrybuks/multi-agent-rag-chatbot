@@ -22,8 +22,9 @@ from langfuse.langchain import CallbackHandler
 load_dotenv()
 
 from config import LLM_MODEL
-from agents.specialist_agents import create_agent, BaseAgent
-from agents.base_agent import AgentResponse
+from querying.agents.specialist_agents import create_agent, BaseAgent
+from querying.agents.base_agent import AgentResponse
+from querying.tools.vector_store_manager import VectorStoreManager
 from utils.llm import initialize_llm
 
 
@@ -168,6 +169,16 @@ class Orchestrator:
         # Create prompts
         self._create_prompts()
         
+        # Create LCEL chains for routing and multi-agent detection
+        self._create_chains()
+        
+        # Preload all vector stores at startup
+        handbook_names = [
+            config.handbook_name 
+            for config in self.agent_registry.AGENTS.values()
+        ]
+        self.vector_store_manager = VectorStoreManager(handbook_names)
+        
         # Agent instances cache (lazy loading)
         self._agent_instances: Dict[str, BaseAgent] = {}
         
@@ -265,10 +276,41 @@ Examples:
             ("human", "Query: {query}\n\nAnalysis:"),
         ])
     
+    def _create_chains(self):
+        """Create LCEL chains for routing and multi-agent detection."""
+        # LCEL chain for single agent routing
+        self.routing_chain = (
+            self.routing_prompt.partial(
+                agent_descriptions=self.agent_registry.get_agent_descriptions()
+            )
+            | self.llm
+            | StrOutputParser()
+        )
+        
+        # LCEL chain for multi-agent detection (with JSON parser)
+        self.multi_agent_chain = (
+            self.multi_agent_prompt.partial(
+                agent_descriptions=self.agent_registry.get_agent_descriptions()
+            )
+            | self.llm
+            | JsonOutputParser()
+        )
+    
     def _get_agent_instance(self, agent_name: str) -> BaseAgent:
         """Get or create an agent instance (lazy loading)."""
         if agent_name not in self._agent_instances:
-            self._agent_instances[agent_name] = create_agent(agent_name, self.llm_model)
+            # Get preloaded vector store for this agent
+            agent_config = self.agent_registry.get_agent(agent_name)
+            if agent_config:
+                vector_store = self.vector_store_manager.get_store(agent_config.handbook_name)
+            else:
+                vector_store = None
+            
+            self._agent_instances[agent_name] = create_agent(
+                agent_name, 
+                self.llm_model,
+                vector_store=vector_store
+            )
         return self._agent_instances[agent_name]
     
     def _get_conversation_context(self, session_id: str) -> ConversationContext:
@@ -288,19 +330,10 @@ Examples:
         Returns:
             Dict with requires_multiple_agents, agents, requires_sequential, and reasoning
         """
-        # Create detection chain
+        # Use multi-agent detection chain (with JSON parser)
         # @observe decorator automatically captures function inputs/outputs
-        parser = JsonOutputParser()
-        chain = (
-            self.multi_agent_prompt.partial(
-                agent_descriptions=self.agent_registry.get_agent_descriptions()
-            )
-            | self.llm
-            | parser
-        )
-        
         try:
-            result = chain.invoke(
+            result = self.multi_agent_chain.invoke(
                 {"query": query},
                 config={"callbacks": [self.langfuse_handler]}
             )
@@ -355,20 +388,14 @@ Examples:
         """
         # @observe decorator automatically captures function inputs
         
-        # Create the routing chain
-        chain = (
-            self.routing_prompt.partial(
-                agent_descriptions=self.agent_registry.get_agent_descriptions()
-            )
-            | self.llm
-            | StrOutputParser()
-        )
-        
-        # Get routing decision
-        agent_name = chain.invoke(
+        # Use LCEL chain for routing decision
+        result = self.routing_chain.invoke(
             {"query": query},
             config={"callbacks": [self.langfuse_handler]}
-        ).strip().lower()
+        )
+        
+        # Extract agent name from chain output (StrOutputParser returns string)
+        agent_name = str(result).strip().lower()
         
         # Normalize agent name
         if agent_name == "general":

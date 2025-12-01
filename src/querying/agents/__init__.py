@@ -1,6 +1,6 @@
 """Agent modules for the multi-agent RAG chatbot."""
 
-from agents.orchestrator import (
+from querying.agents.orchestrator import (
     Orchestrator,
     AgentRegistry,
     AgentConfig,
@@ -8,8 +8,8 @@ from agents.orchestrator import (
     ConversationContext,
     RoutingMode,
 )
-from agents.base_agent import BaseAgent, AgentResponse
-from agents.specialist_agents import (
+from querying.agents.base_agent import BaseAgent, AgentResponse
+from querying.agents.specialist_agents import (
     FinanceAgent,
     HRAgent,
     LegalAgent,

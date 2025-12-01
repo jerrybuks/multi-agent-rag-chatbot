@@ -1,22 +1,25 @@
-"""Base agent class for specialist agents."""
+"""Base agent class for specialist agents using LangChain tools and agents."""
 
 import os
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 
 from dotenv import load_dotenv
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+from langchain.agents import initialize_agent, AgentType, AgentExecutor
 from langfuse import observe
 from langfuse.langchain import CallbackHandler
 
 # Load environment variables
 load_dotenv()
 
+from typing import Optional, Union
+from langchain_chroma import Chroma
+from langchain_community.vectorstores import FAISS
+
 from config import LLM_MODEL, MIN_SIMILARITY
 from indexing.embeddings import load_vector_store
+from querying.tools.rag_tool import get_rag_tools_for_agent
 from utils.llm import initialize_llm
 
 
@@ -38,6 +41,7 @@ class BaseAgent(ABC):
         handbook_name: str,
         description: str,
         llm_model: str = None,
+        vector_store: Optional[Union[Chroma, FAISS]] = None,
     ):
         """
         Initialize the agent.
@@ -47,6 +51,7 @@ class BaseAgent(ABC):
             handbook_name: Name of the handbook/vector store
             description: Agent description
             llm_model: LLM model to use. Defaults to config LLM_MODEL.
+            vector_store: Preloaded vector store. If None, will load on demand (slower)
         """
         self.name = name
         self.handbook_name = handbook_name
@@ -60,11 +65,14 @@ class BaseAgent(ABC):
         # Initialize LLM
         self._initialize_llm()
         
-        # Load vector store (lazy loading - will be loaded on first use)
-        self._vector_store = None
+        # Store preloaded vector store or None for lazy loading
+        self._vector_store = vector_store
         
-        # Create agent prompt
-        self._create_agent_prompt()
+        # Get RAG tools for this agent (pass preloaded vector store)
+        self.tools = get_rag_tools_for_agent(name, handbook_name, vector_store=vector_store)
+        
+        # Create agent using initialize_agent with tools
+        self._create_agent_with_tools()
     
     def _initialize_llm(self):
         """Initialize the LLM with Langfuse instrumentation."""
@@ -73,39 +81,39 @@ class BaseAgent(ABC):
             langfuse_handler=self.langfuse_handler
         )
     
+    def _create_agent_with_tools(self):
+        """Create agent using initialize_agent with RAG tools."""
+        system_message = f"""You are a {self.name.upper()} specialist agent for JupiterIQ, a SaaS company.
+
+Your role: {self.description}
+
+You have access to tools to search the {self.handbook_name} knowledge base. Always use the {self.name}_rag_search tool to search the knowledge base when answering questions.
+
+Guidelines:
+1. Always use the {self.name}_rag_search tool to search the knowledge base when answering questions
+2. Answer based on the retrieved context from the tool
+3. If the context doesn't contain enough information, say so clearly
+4. Be concise but thorough
+5. Maintain a professional, helpful tone
+6. If the query is outside your domain, acknowledge it and suggest routing to another agent"""
+        
+        # Initialize agent with tools using LangChain's initialize_agent
+        self.agent_executor = initialize_agent(
+            tools=self.tools,
+            llm=self.llm,
+            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            verbose=False,
+            agent_kwargs={
+                "system_message": system_message,
+            },
+            handle_parsing_errors=True,
+        )
+    
     def _load_vector_store(self):
         """Lazy load the vector store."""
         if self._vector_store is None:
             self._vector_store = load_vector_store(self.handbook_name)
         return self._vector_store
-    
-    def _create_agent_prompt(self):
-        """Create the agent-specific prompt template."""
-        self.prompt = ChatPromptTemplate.from_messages([
-            ("system", f"""You are a {self.name.upper()} specialist agent for JupiterIQ, a SaaS company.
-
-Your role: {self.description}
-
-You have access to the {self.handbook_name} knowledge base. Use the retrieved context to provide accurate, helpful answers.
-
-Guidelines:
-1. Answer based on the provided context from the knowledge base
-2. If the context doesn't contain enough information, say so clearly
-3. Be concise but thorough
-4. Maintain a professional, helpful tone
-5. If the query is outside your domain, acknowledge it and suggest routing to another agent
-
-Context from knowledge base:
-{{context}}
-
-Previous conversation context (if any):
-{{conversation_history}}
-
-User query: {{query}}
-
-Provide a helpful, accurate response based on the context above:"""),
-            ("human", "{query}"),
-        ])
     
     def _retrieve_context(
         self, 
@@ -177,48 +185,25 @@ Provide a helpful, accurate response based on the context above:"""),
         # Metadata is captured automatically by @observe decorator
         
         try:
-            # Retrieve relevant context (filtered by min_similarity)
-            context_docs = self._retrieve_context(query, k=k, min_similarity=min_similarity)
-            
-            if not context_docs:
-                return AgentResponse(
-                    content=f"I couldn't find relevant information in the {self.handbook_name} knowledge base to answer your query. Please try rephrasing or contact support for assistance.",
-                    agent_name=self.name,
-                    sources=[],
-                    metadata={"error": "no_context_found"},
-                )
-            
-            # Format context for prompt
-            context_text = "\n\n".join([
-                f"[Source {i+1}]\n{doc['content']}"
-                for i, doc in enumerate(context_docs)
-            ])
-            
-            # Format conversation history
-            history_text = ""
+            # Format conversation history if provided
             if conversation_history:
-                history_text = "\n".join([
+                history_context = "\n".join([
                     f"{msg['role'].title()}: {msg['content']}"
                     for msg in conversation_history[-5:]  # Last 5 messages
                 ])
+                full_query = f"Previous conversation:\n{history_context}\n\nCurrent question: {query}"
+            else:
+                full_query = query
             
-            # Create RAG chain
-            chain = (
-                {
-                    "context": lambda x: context_text,
-                    "conversation_history": lambda x: history_text,
-                    "query": RunnablePassthrough(),
-                }
-                | self.prompt
-                | self.llm
-                | StrOutputParser()
+            # Run agent with tools (agent will use RAG tool automatically)
+            response_content = self.agent_executor.run(
+                full_query,
+                callbacks=[self.langfuse_handler]
             )
             
-            # Generate response
-            response_content = chain.invoke(
-                query,
-                config={"callbacks": [self.langfuse_handler]}
-            )
+            # Extract sources by retrieving context separately for metadata
+            # (The agent used the tool, but we need source details for response)
+            context_docs = self._retrieve_context(query, k=k, min_similarity=min_similarity)
             
             # Extract sources
             sources = [
