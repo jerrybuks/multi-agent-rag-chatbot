@@ -11,6 +11,13 @@ A multi-agent RAG (Retrieval Augmented Generation) chatbot system for JupiterIQ 
 <!-- - **Metrics**: [https://rag-based-chatbot-96uz.onrender.com/api/v1/query/metrics](https://rag-based-chatbot-96uz.onrender.com/api/v1/query/metrics) -->
 - **Report**: [https://github.com/jerrybuks/multi-agent-rag-chatbot/blob/main/reports/REPORT.md](https://github.com/jerrybuks/multi-agent-rag-chatbot/blob/main/reports/REPORT.md)
 
+
+## Documentation
+
+- **[📊 Technical Report](reports/REPORT.md)** - Comprehensive architecture, design decisions, and system overview
+- **[🔄 Flow Diagrams](FLOW_DIAGRAM.md)** - Component interaction diagram and key decision points
+- **[📚 Golden Datasets](data/golden_datasets/README.md)** - Test dataset documentation
+
 ## API Key Setup
 
 1. You can run this app with either openAI key or [OpenRouter](https://openrouter.ai/) key
@@ -106,23 +113,6 @@ python tests/test_runner.py \
   --min-similarity 0.75
 ```
 
-### Available Datasets
-
-- `finance.jsonl` - Finance agent test cases
-- `hr.jsonl` - HR agent test cases
-- `legal.jsonl` - Legal agent test cases
-- `tech.jsonl` - Tech agent test cases
-- `general_knowledge.jsonl` - General knowledge test cases
-- `multi_agent.jsonl` - Multi-agent routing test cases
-- `routing.jsonl` - Routing accuracy test cases
-
-### Test Output
-
-Each test displays:
-- Quality score (1-10) from Langfuse evaluator
-- Pass/fail status (score ≥ 7.0 is passing)
-- Reasoning for the quality score
-
 ## Project Structure
 
 ```
@@ -146,12 +136,6 @@ Each test displays:
 │   └── REPORT.md           # Comprehensive technical report
 └── pyproject.toml          # Python dependencies
 ```
-
-## Documentation
-
-- **[📊 Technical Report](reports/REPORT.md)** - Comprehensive architecture, design decisions, and system overview
-- **[🔄 Flow Diagrams](FLOW_DIAGRAM.md)** - Component interaction diagram and key decision points
-- **[📚 Golden Datasets](data/golden_datasets/README.md)** - Test dataset documentation
 
 ## Known Limitations
 
