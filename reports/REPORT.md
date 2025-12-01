@@ -1,10 +1,5 @@
 # Multi-Agent RAG Chatbot - Technical Report
 
-> **Note**: This report includes references to Langfuse dashboard screenshots. To view the images on GitHub, ensure the following image files are placed in the `reports/` directory:
-> - `langfuse_tracing_dashboard.png`
-> - `langfuse_scores_dashboard.png`
-> - `langfuse_observations_dashboard.png`
-
 ## Executive Summary
 
 This report documents the architecture, design decisions, and implementation of a sophisticated **Multi-Agent RAG (Retrieval Augmented Generation) Chatbot** system for JupiterIQ. The system intelligently routes customer inquiries across specialized AI agents (Finance, HR, Legal, Tech, and General Knowledge), each equipped with domain-specific knowledge bases and RAG capabilities.
