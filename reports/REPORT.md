@@ -1,5 +1,10 @@
 # Multi-Agent RAG Chatbot - Technical Report
 
+> **Note**: This report includes references to Langfuse dashboard screenshots. To view the images on GitHub, ensure the following image files are placed in the `reports/` directory:
+> - `langfuse_tracing_dashboard.png`
+> - `langfuse_scores_dashboard.png`
+> - `langfuse_observations_dashboard.png`
+
 ## Executive Summary
 
 This report documents the architecture, design decisions, and implementation of a sophisticated **Multi-Agent RAG (Retrieval Augmented Generation) Chatbot** system for JupiterIQ. The system intelligently routes customer inquiries across specialized AI agents (Finance, HR, Legal, Tech, and General Knowledge), each equipped with domain-specific knowledge bases and RAG capabilities.
@@ -293,7 +298,7 @@ Every response is automatically evaluated using **LLM-as-a-Judge**:
 
 The Langfuse Scores dashboard provides a centralized view of all quality evaluations, allowing you to monitor, filter, and analyze response quality over time.
 
-![Langfuse Scores Dashboard](./langfuse_scores_dashboard.png)
+![Langfuse Scores Dashboard](langfuse_scores_dashboard.png)
 
 *Figure: Langfuse Scores dashboard showing `rag_quality_score` evaluations with values of 9, 9, and 8. Each score includes detailed comments explaining the quality assessment, enabling easy identification of high-performing responses and areas for improvement.*
 
@@ -577,7 +582,7 @@ python tests/test_runner.py \
 
 The Langfuse dashboard provides comprehensive observability into every aspect of the system's operation. Every query is automatically traced, showing the complete execution flow from routing to response generation.
 
-![Langfuse Tracing Dashboard](./langfuse_tracing_dashboard.png)
+![Langfuse Tracing Dashboard](langfuse_tracing_dashboard.png)
 
 *Figure: Langfuse tracing dashboard showing a complete trace for `orchestrator_process_query` with quality score of 9.00. The trace displays the hierarchical execution flow, input/output details, and automatic quality evaluation.*
 
@@ -613,7 +618,7 @@ The Langfuse dashboard provides comprehensive observability into every aspect of
 
 The Observations view provides a granular, step-by-step breakdown of every component execution within a trace, showing the complete execution flow from orchestrator to agent to RAG tools.
 
-![Langfuse Observations Dashboard](./langfuse_observations_dashboard.png)
+![Langfuse Observations Dashboard](langfuse_observations_dashboard.png)
 
 *Figure: Langfuse Observations dashboard showing detailed execution steps including `langfuse_evaluator_score_response` with quality scores (9.0), `AgentExecutor`, `finance_rag_search` tool calls, `ChatOpenAI` LLM invocations, and `LLMChain` operations. Each observation shows input/output data, timestamps, and component types.*
 

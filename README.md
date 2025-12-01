@@ -2,6 +2,15 @@
 
 A multi-agent RAG (Retrieval Augmented Generation) chatbot system for JupiterIQ that handles customer inquiries across multiple departments (HR, Tech, Finance, Legal).
 
+## Live Demo & Monitoring
+
+<!-- - **Product Demo**: [https://rag-chatbot-fe-self.vercel.app/](https://rag-chatbot-fe-self.vercel.app) -->
+
+- **API Documentation**: [https://multi-agent-rag-chatbot.onrender.com/docs](https://multi-agent-rag-chatbot.onrender.com/docs)
+- **Status Page**: [https://stats.uptimerobot.com/5z2EBCHShQ](https://stats.uptimerobot.com/5z2EBCHShQ)
+<!-- - **Metrics**: [https://rag-based-chatbot-96uz.onrender.com/api/v1/query/metrics](https://rag-based-chatbot-96uz.onrender.com/api/v1/query/metrics) -->
+- **Report**: [https://github.com/jerrybuks/multi-agent-rag-chatbot/blob/main/reports/REPORT.md](https://github.com/jerrybuks/multi-agent-rag-chatbot/blob/main/reports/REPORT.md)
+
 ## API Key Setup
 
 1. You can run this app with either openAI key or [OpenRouter](https://openrouter.ai/) key

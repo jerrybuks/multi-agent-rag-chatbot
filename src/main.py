@@ -51,7 +51,7 @@ def create_app() -> FastAPI:
             "endpoints": {
                 "root": {
                     "GET /": "This endpoint - API information",
-                    "GET /health": "Health check endpoint",
+                    "HEAD /health": "Health check endpoint",
                 },
                 "query": {
                     "POST /api/v1/query": "Process a user query through the orchestrator",
@@ -67,7 +67,7 @@ def create_app() -> FastAPI:
         }
     
     # Health check endpoint
-    @app.get("/health")
+    @app.head("/health")
     def health_check():
         """Health check endpoint."""
         return {"status": "ok"}
