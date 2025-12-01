@@ -24,17 +24,20 @@ graph LR
     
     subgraph "Tool Layer"
         J[RAG Tool]
-        K[Vector Store Manager]
+        K[tech_rag_search]
+        L[finance_rag_search]
+        M[hr_rag_search]
+        N[legal_rag_search]
+        O[general_rag_search]
     end
     
     subgraph "Vector Store Layer"
-        L[Chroma Vector Store]
-        M[Embeddings]
-    end
-    
-    subgraph "Evaluation Layer"
-        N[Langfuse Evaluator]
-        O[Quality Scoring]
+        P[Chroma Vector Store]
+        Q[tech_handbook]
+        R[finance_handbook]
+        S[hr_handbook]
+        T[legal_handbook]
+        U[general_handbook]
     end
     
     A --> B
@@ -42,24 +45,25 @@ graph LR
     C --> D
     C --> E
     C --> F
-    D --> G
-    E --> G
-    F --> G
+    C --> G
     G --> H
     H --> I
     I --> J
     J --> K
-    K --> L
-    L --> M
-    I --> N
-    N --> O
-    
-    style A fill:#e1f5ff
-    style C fill:#fff4e1
-    style G fill:#e8f5e9
-    style J fill:#f3e5f5
-    style L fill:#fce4ec
-    style N fill:#fff9c4
+    J --> L
+    J --> M
+    J --> N
+    J --> O
+    K --> P
+    L --> P
+    M --> P
+    N --> P
+    O --> P
+    P --> Q
+    P --> R
+    P --> S
+    P --> T
+    P --> U
 ```
 
 ## Key Decision Points
