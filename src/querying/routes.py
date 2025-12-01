@@ -3,7 +3,7 @@
 import hashlib
 from fastapi import APIRouter, HTTPException, Request
 
-from agents import Orchestrator, OrchestratorResponse
+from querying.agents import Orchestrator, OrchestratorResponse
 from .models import QueryRequest, QueryResponse, SourceResponse
 
 # Create router
