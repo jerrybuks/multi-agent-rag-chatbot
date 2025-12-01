@@ -26,6 +26,7 @@ from querying.agents.specialist_agents import create_agent, BaseAgent
 from querying.agents.base_agent import AgentResponse
 from querying.tools.vector_store_manager import VectorStoreManager
 from utils.llm import initialize_llm
+from evaluation.langfuse_evaluator import LangfuseEvaluator
 
 
 class RoutingMode(Enum):
@@ -178,6 +179,9 @@ class Orchestrator:
             for config in self.agent_registry.AGENTS.values()
         ]
         self.vector_store_manager = VectorStoreManager(handbook_names)
+        
+        # Initialize Langfuse evaluator for automatic quality scoring
+        self.evaluator = LangfuseEvaluator(llm_model=self.llm_model)
         
         # Agent instances cache (lazy loading)
         self._agent_instances: Dict[str, BaseAgent] = {}
@@ -609,12 +613,33 @@ Examples:
             # Step 3: Bundle responses
             bundled_content = self._bundle_responses(responses, routing_mode)
             
-            # Step 4: Update conversation context
+            # Step 4: Automatically evaluate response quality using Langfuse evaluator
+            try:
+                # Evaluate response quality (1-10 scale)
+                # The @observe decorator on evaluate_response will create a trace
+                # and the score will be automatically linked to it
+                quality_score = self.evaluator.evaluate_response(
+                    query=query,
+                    response=bundled_content,
+                )
+                
+                # Add quality score to metadata
+                evaluation_metadata = {
+                    "quality_score": quality_score.score,
+                    "quality_reasoning": quality_score.reasoning,
+                    "quality_dimensions": quality_score.dimensions,
+                }
+            except Exception as eval_error:
+                # Don't fail if evaluation fails, just log it
+                print(f"Warning: Quality evaluation failed: {eval_error}")
+                evaluation_metadata = {}
+            
+            # Step 5: Update conversation context
             context.add_message("assistant", bundled_content)
             context.agent_history.extend(agent_names)
             context.last_agent = agent_names[-1] if agent_names else None
             
-            # Step 5: Create orchestrator response
+            # Step 6: Create orchestrator response
             orchestrator_response = OrchestratorResponse(
                 content=bundled_content,
                 agents_used=agent_names,
@@ -625,6 +650,7 @@ Examples:
                     "detection_result": detection_result,
                     "conversation_length": len(context.messages),
                     "processing_mode": "sequential" if requires_sequential else "parallel",
+                    **evaluation_metadata,  # Include quality evaluation results
                 }
             )
             

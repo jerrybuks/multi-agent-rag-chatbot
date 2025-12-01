@@ -1,60 +1,4 @@
-# System Flow Diagram (Mermaid)
-
-## Complete System Flow
-
-```mermaid
-graph TD
-    A[User Query<br/>POST /api/v1/query] --> B[FastAPI Route Handler]
-    B --> C[Extract Client IP]
-    C --> D[Generate session_id<br/>from IP hash]
-    D --> E[Orchestrator.process_query_async]
-    
-    E --> F[Get Conversation Context<br/>session_id → ConversationContext]
-    F --> G[Detect Multi-Agent Need<br/>LCEL chain with multi_agent_prompt]
-    
-    G --> H{Multi-Agent?}
-    H -->|No| I[Route Single Agent<br/>LCEL chain with routing_prompt]
-    H -->|Yes| J{Sequential or Parallel?}
-    
-    J -->|Parallel| K[Process Multiple Agents<br/>in Parallel]
-    J -->|Sequential| L[Process Multiple Agents<br/>Sequentially with Context]
-    
-    I --> M[Get Agent Instance<br/>create_agent]
-    K --> M
-    L --> M
-    
-    M --> N[BaseAgent.process_query]
-    N --> O[AgentExecutor.run<br/>initialize_agent]
-    
-    O --> P[Agent uses RAG tool]
-    P --> Q[RAG Tool Execution<br/>tech_rag_search]
-    
-    Q --> S[Load Vector Store<br/>Chroma]
-    S --> T[Similarity Search<br/>with_score]
-    T --> U[Convert Distance to Similarity<br/>Filter by min_similarity]
-    U --> V[Format Context String]
-    V --> W[Return to Agent]
-    
-    W --> X[Agent generates response<br/>using LLM with context]
-    R --> X
-    
-    X --> Y[Extract Sources<br/>_retrieve_context]
-    Y --> Z[Return AgentResponse<br/>content + sources]
-    
-    Z --> AA[Orchestrator bundles responses]
-    AA --> AB[Update Conversation Context]
-    AB --> AC[Return OrchestratorResponse]
-    
-    AC --> AD[FastAPI formats response]
-    AD --> AE[Return JSON to User]
-    
-    style A fill:#e1f5ff
-    style E fill:#fff4e1
-    style N fill:#e8f5e9
-    style Q fill:#f3e5f5
-    style S fill:#fce4ec
-    style AE fill:#e1f5ff
-```
+# System Flow Diagram
 
 ## Component Interaction Diagram
 
@@ -80,20 +24,17 @@ graph LR
     
     subgraph "Tool Layer"
         J[RAG Tool]
-        K[tech_rag_search]
-        L[finance_rag_search]
-        M[hr_rag_search]
-        N[legal_rag_search]
-        O[general_rag_search]
+        K[Vector Store Manager]
     end
     
     subgraph "Vector Store Layer"
-        P[Chroma Vector Store]
-        Q[tech_handbook]
-        R[finance_handbook]
-        S[hr_handbook]
-        T[legal_handbook]
-        U[general_handbook]
+        L[Chroma Vector Store]
+        M[Embeddings]
+    end
+    
+    subgraph "Evaluation Layer"
+        N[Langfuse Evaluator]
+        O[Quality Scoring]
     end
     
     A --> B
@@ -101,152 +42,171 @@ graph LR
     C --> D
     C --> E
     C --> F
-    C --> G
+    D --> G
+    E --> G
+    F --> G
     G --> H
     H --> I
     I --> J
     J --> K
-    J --> L
-    J --> M
-    J --> N
-    J --> O
-    K --> P
-    L --> P
-    M --> P
-    N --> P
-    O --> P
-    P --> Q
-    P --> R
-    P --> S
-    P --> T
-    P --> U
-```
-
-## Data Flow Sequence
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant API as FastAPI Route
-    participant Orch as Orchestrator
-    participant Agent as BaseAgent
-    participant Tool as RAG Tool
-    participant VS as Vector Store
-    participant LLM as OpenAI LLM
+    K --> L
+    L --> M
+    I --> N
+    N --> O
     
-    User->>API: POST /api/v1/query
-    API->>API: Generate session_id from IP
-    API->>Orch: process_query_async(query, session_id)
-    
-    Orch->>Orch: Get conversation context
-    Orch->>LLM: LCEL chain (multi-agent detection)
-    LLM-->>Orch: {agents: ["tech"], requires_multi: false}
-    
-    Orch->>LLM: LCEL chain (routing)
-    LLM-->>Orch: "tech"
-    
-    Orch->>Agent: process_query(query, history)
-    Agent->>Agent: Format conversation history
-    Agent->>Agent: agent_executor.run(query)
-    
-    Agent->>Tool: tech_rag_search(query)
-    Tool->>VS: Load vector store
-    Tool->>VS: similarity_search_with_score(query, k=8)
-    VS-->>Tool: [(doc, distance), ...]
-    Tool->>Tool: Convert distance to similarity
-    Tool->>Tool: Filter by min_similarity
-    Tool->>Tool: Deduplicate
-    Tool-->>Agent: Formatted context string
-    
-    Agent->>LLM: Generate response with context
-    LLM-->>Agent: Response text
-    
-    Agent->>VS: _retrieve_context() for sources
-    VS-->>Agent: Source documents with metadata
-    Agent-->>Orch: AgentResponse(content, sources)
-    
-    Orch->>Orch: Bundle responses
-    Orch->>Orch: Update conversation context
-    Orch-->>API: OrchestratorResponse
-    
-    API->>API: Format QueryResponse
-    API-->>User: JSON Response
+    style A fill:#e1f5ff
+    style C fill:#fff4e1
+    style G fill:#e8f5e9
+    style J fill:#f3e5f5
+    style L fill:#fce4ec
+    style N fill:#fff9c4
 ```
 
 ## Key Decision Points
 
-```mermaid
-flowchart TD
-    Start[Query Received] --> CheckMulti{Multi-Agent<br/>Detection}
-    
-    CheckMulti -->|Single Agent| RouteSingle[Route to Single Agent]
-    CheckMulti -->|Multiple Agents| CheckSeq{Sequential<br/>or Parallel?}
-    
-    CheckSeq -->|Sequential| SeqProcess[Process with Context Handoff]
-    CheckSeq -->|Parallel| ParProcess[Process Independently]
-    
-    RouteSingle --> GetAgent[Get Agent Instance]
-    SeqProcess --> GetAgent
-    ParProcess --> GetAgent
-    
-    GetAgent --> AgentProcess[Agent.process_query]
-    AgentProcess --> UseTool{Use RAG Tool?}
-    
-    UseTool -->|Yes| ToolExec[Execute RAG Tool]
-    
-    ToolExec --> VectorSearch[Vector Store Search]
-    VectorSearch --> Filter[Filter by Similarity]
-    Filter --> Format[Format Context]
-    Format --> LLMGen[LLM Generates Response]
-    LLMGen --> ExtractSources[Extract Sources]
-    ExtractSources --> Bundle[Bundle Responses]
-    Bundle --> Return[Return to User]
-    
-    style CheckMulti fill:#fff4e1
-    style CheckSeq fill:#fff4e1
-    style UseTool fill:#e8f5e9
-    style VectorSearch fill:#f3e5f5
+### 1. Single vs Multi-Agent Routing
+
+**Decision Point**: After receiving a user query, the orchestrator must determine if one or multiple agents are needed.
+
+**Process**:
+```
+Query → Multi-Agent Detection (LLM) → {
+    requires_multiple_agents: true/false
+    agents: ["finance", "tech"]
+    requires_sequential: true/false
+}
 ```
 
-## Technology Stack Flow
+**Criteria**:
+- **Single Agent**: Query clearly belongs to one domain
+- **Multi-Agent**: Query spans multiple domains or has multiple independent parts
 
+**Example**:
+- Single: "How do I update my payment method?" → `finance`
+- Multi: "I need to update payment and also want API docs" → `["finance", "tech"]`
+
+---
+
+### 2. Parallel vs Sequential Processing
+
+**Decision Point**: For multi-agent queries, determine if agents can process independently or need context handoff.
+
+**Process**:
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    USER INTERFACE                            │
-│              HTTP POST Request                               │
-└───────────────────────┬─────────────────────────────────────┘
-                        │
-        ┌───────────────┴───────────────┐
-        │                               │
-┌───────▼────────┐            ┌────────▼────────┐
-│   FastAPI      │            │   Langfuse       │
-│   (Web Server) │            │   (Observability)│
-└───────┬────────┘            └─────────────────┘
-        │
-┌───────▼──────────────────────────────────────┐
-│           ORCHESTRATOR                         │
-│  • LCEL Chain (Routing)                       │
-│  • LCEL Chain (Multi-Agent Detection)         │
-│  • Context Management                         │
-└───────┬───────────────────────────────────────┘
-        │
-┌───────▼──────────────────────────────────────┐
-│           BASE AGENT                           │
-│  • initialize_agent (LangChain)               │
-│  • AgentExecutor                               │
-└───────┬───────────────────────────────────────┘
-        │
-┌───────▼──────────────────────────────────────┐
-│           RAG TOOLS                            │
-│  • Tool (LangChain)                           │
-│  • Vector Store Access                        │
-└───────┬───────────────────────────────────────┘
-        │
-┌───────▼──────────────────────────────────────┐
-│           VECTOR STORE                         │
-│  • Chroma                                     │
-│  • OpenAI Embeddings                         │
-│  • Cosine Similarity                         │
-└──────────────────────────────────────────────┘
+Multi-Agent Query → LLM Analysis → {
+    requires_sequential: true/false
+    reasoning: "Finance needs HR's answer first"
+}
 ```
+
+**Criteria**:
+- **Parallel**: Agents can work independently
+  - Example: "Update payment method and get API docs" (independent)
+- **Sequential**: One agent's output is needed by another
+  - Example: "Can I upgrade? If yes, what's the pricing?" (finance needs hr's answer)
+
+**Implementation**:
+- **Parallel**: `asyncio.gather()` - all agents process simultaneously
+- **Sequential**: Loop through agents, adding each response to context for next agent
+
+---
+
+### 3. RAG Tool Usage
+
+**Decision Point**: Agent must decide when to use RAG tool vs. answering from general knowledge.
+
+**Process**:
+```
+Agent receives query → AgentExecutor decides → {
+    Use RAG Tool: If domain-specific knowledge needed
+    Direct Answer: If general knowledge sufficient
+}
+```
+
+**Criteria**:
+- **Use RAG**: Query requires specific handbook information
+- **Skip RAG**: Query is general conversation or clarification
+
+**Implementation**: LangChain's `initialize_agent` automatically decides based on tool descriptions and query content.
+
+---
+
+### 4. Similarity Filtering
+
+**Decision Point**: After retrieving chunks from vector store, filter by relevance threshold.
+
+**Process**:
+```
+Retrieve k*2 chunks → Convert distance to similarity → Filter by min_similarity → Deduplicate → Return k chunks
+```
+
+**Criteria**:
+- **Include**: `similarity >= min_similarity` (default: 0.78)
+- **Exclude**: Below threshold or duplicate content
+
+**Impact**:
+- Higher threshold (0.85+): More precise but fewer results
+- Lower threshold (0.70-): More results but potentially less relevant
+
+---
+
+### 5. Response Bundling Strategy
+
+**Decision Point**: How to combine multiple agent responses into a coherent answer.
+
+**Process**:
+```
+Multiple Agent Responses → Bundle Strategy → Final Response
+```
+
+**Strategies**:
+- **Single Agent**: Return response directly
+- **Multi-Agent Parallel**: Combine with agent labels `[FINANCE]\n...\n\n[TECH]\n...`
+- **Multi-Agent Sequential**: Bundle maintaining dependency chain
+
+**Example**:
+```
+Sequential Query: "Can I upgrade? If yes, pricing?"
+→ [HR] Yes, you can upgrade to Enterprise plan
+→ [FINANCE] Enterprise plan pricing: $X/month...
+```
+
+---
+
+### 6. Quality Evaluation
+
+**Decision Point**: Automatically evaluate response quality using LLM-as-a-Judge.
+
+**Process**:
+```
+Response Generated → Langfuse Evaluator → LLM Evaluation → Quality Score (1-10)
+```
+
+**Dimensions**:
+- Relevance (30%)
+- Accuracy (25%)
+- Completeness (20%)
+- Clarity (15%)
+- Helpfulness (10%)
+
+**Threshold**: Score ≥ 7.0 considered acceptable
+
+---
+
+### 7. Error Handling
+
+**Decision Point**: How to handle errors at different levels of the system.
+
+**Process**:
+```
+Error Occurs → Error Type Detection → Handling Strategy
+```
+
+**Strategies**:
+- **Agent Error**: Return error response, continue with other agents
+- **Orchestrator Error**: Fallback to `general_knowledge` agent
+- **No Context Found**: Return helpful message, don't treat as error
+- **Critical Error**: Return generic error message to user
+
+**Implementation**: Try-except blocks at each layer with appropriate fallbacks.
 

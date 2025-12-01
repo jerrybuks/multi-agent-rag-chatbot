@@ -41,4 +41,6 @@ class QueryResponse(BaseModel):
     sources: List[SourceResponse] = Field(default_factory=list, description="Sources used to generate the response")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata about the processing")
     session_id: str = Field(..., description="Session ID for this conversation")
+    quality_score: Optional[float] = Field(None, ge=1.0, le=10.0, description="Automatic quality score (1-10) from Langfuse evaluator")
+    quality_reasoning: Optional[str] = Field(None, description="Reasoning for the quality score")
 
