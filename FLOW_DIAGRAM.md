@@ -18,8 +18,8 @@ graph LR
     
     subgraph "Agent Layer"
         G[BaseAgent]
-        H[initialize_agent]
-        I[AgentExecutor]
+        H[LCEL Chain]
+        I[RAG Tool Call]
     end
     
     subgraph "Tool Layer"
@@ -117,13 +117,13 @@ Multi-Agent Query → LLM Analysis → {
 
 ### 3. RAG Tool Usage
 
-**Decision Point**: Agent must decide when to use RAG tool vs. answering from general knowledge.
+**Decision Point**: Agent always uses RAG tool first, then formats response based on retrieved context.
 
 **Process**:
 ```
-Agent receives query → AgentExecutor decides → {
-    Use RAG Tool: If domain-specific knowledge needed
-    Direct Answer: If general knowledge sufficient
+Agent receives query → Always calls RAG Tool → {
+    Context found: Format response based on retrieved context
+    No context found: Respond that information is not available
 }
 ```
 
@@ -131,7 +131,7 @@ Agent receives query → AgentExecutor decides → {
 - **Use RAG**: Query requires specific handbook information
 - **Skip RAG**: Query is general conversation or clarification
 
-**Implementation**: LangChain's `initialize_agent` automatically decides based on tool descriptions and query content.
+**Implementation**: LCEL chain always calls RAG tool first, then LLM formats response based on retrieved context. If no relevant information is found, the agent responds that it doesn't have information.
 
 ---
 
