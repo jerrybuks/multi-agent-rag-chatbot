@@ -33,7 +33,8 @@ VECTOR_STORE_TYPE = "chroma"  # Options: "chroma" or "faiss"
 VECTOR_STORE_PATH = DATA_DIR / "vectorstore"
 
 # RAG retrieval configuration
-MIN_SIMILARITY = 0.75  # Minimum similarity threshold for retrieved context (0.0 to 1.0)
+MIN_SIMILARITY = 0.7  # Minimum similarity threshold for retrieved context (0.0 to 1.0)
+DEFAULT_K = 5  # Default number of documents to retrieve (final count after filtering)
 
 # Markdown header levels to split on
 HEADERS_TO_SPLIT_ON = [

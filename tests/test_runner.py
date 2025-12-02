@@ -7,9 +7,12 @@ from pathlib import Path
 from typing import Optional
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+src_path = Path(__file__).parent.parent / "src"
+sys.path.insert(0, str(src_path))
 
-from querying.agents import Orchestrator
+# Import after adding src to path
+from querying.agents import Orchestrator  # type: ignore
+from config import MIN_SIMILARITY
 
 
 def load_golden_dataset(dataset_file: str) -> list[dict]:
@@ -31,7 +34,7 @@ def load_golden_dataset(dataset_file: str) -> list[dict]:
 
 async def run_tests(
     dataset_file: Optional[str] = None,
-    min_similarity: float = 0.78,
+    min_similarity: float = MIN_SIMILARITY,
     max_tests: Optional[int] = None,
 ):
     """
@@ -124,7 +127,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Run golden dataset tests")
     parser.add_argument("--dataset", type=str, help="Specific dataset file (e.g., finance.jsonl)")
-    parser.add_argument("--min-similarity", type=float, default=0.78, help="Minimum similarity threshold")
+    parser.add_argument("--min-similarity", type=float, default=MIN_SIMILARITY, help="Minimum similarity threshold")
     parser.add_argument("--max-tests", type=int, help="Maximum tests to run")
     
     args = parser.parse_args()
