@@ -209,6 +209,10 @@ Answer the user's question based ONLY on the retrieved context above. If the con
             # Retrieve sources separately for metadata
             context_docs = self._retrieve_context(query, k=k, min_similarity=min_similarity)
             
+            # Log if no sources found (for debugging)
+            if not context_docs:
+                print(f"WARNING: No sources found for query '{query}' in {self.handbook_name} with min_similarity={min_similarity}")
+            
             # Extract sources
             sources = [
                 {

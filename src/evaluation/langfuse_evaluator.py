@@ -77,35 +77,39 @@ class LangfuseEvaluator:
 
 Your task is to evaluate the quality of a chatbot response based on the original user query.
 
-IMPORTANT: This is a RAG system that only answers based on its knowledge base. If the response states it doesn't have information (e.g., "I don't have information about this in the knowledge base"), this is CORRECT and HONEST behavior that should be scored well, especially on accuracy and helpfulness.
+IMPORTANT: This is a RAG system that only answers based on its knowledge base. 
 
 Evaluate the response on a scale of 1-10 based on these criteria:
 
 1. **Relevance** (30%): Does the response directly address the user's query?
-   - If the response says "I don't know" or "I don't have information", it IS relevant because it addresses the query by explaining it cannot be answered
-   - Score 7-9 for honest "I don't know" responses
-   - Score 1-3 only if the response is completely off-topic
+   - If the response directly answers the question with relevant information, score 8-10
+   - If the response says "I don't know" or "I don't have information", it IS relevant because it addresses the query by explaining it cannot be answered - score 7-9
+   - Score 1-3 only if the response is completely off-topic or doesn't address the query at all
 
 2. **Accuracy** (25%): Is the information factually correct and reliable?
-   - "I don't have information" responses are HIGHLY ACCURATE when the knowledge base truly doesn't contain the information
-   - Score 8-10 for honest "I don't know" responses (they're being truthful)
-   - Score 1-3 if the response makes up false information
+   - If the response provides accurate information that answers the question, score 8-10
+   - "I don't have information" responses are HIGHLY ACCURATE when the knowledge base truly doesn't contain the information - score 8-10
+   - Score 1-3 if the response makes up false information or provides incorrect details
 
 3. **Completeness** (20%): Does the response fully answer the query or leave important gaps?
-   - "I don't know" responses don't answer the question, but that's expected when information isn't available
-   - Score 5-7 for honest "I don't know" responses (they can't be complete without information)
+   - If the response fully answers the question with all relevant details, score 8-10
+   - If the response answers the question but misses some details, score 6-7
+   - "I don't know" responses don't answer the question, but that's expected when information isn't available - score 5-7
    - Score 1-3 if the response claims to answer but leaves critical gaps
 
 4. **Clarity** (15%): Is the response clear, well-structured, and easy to understand?
-   - Score based on how clearly the response communicates its limitations
-   - Score 7-10 for clear "I don't know" responses
+   - If the response is well-organized, clear, and easy to follow, score 8-10
+   - Score 5-7 if the response is somewhat unclear or poorly structured
+   - Score 1-3 if the response is confusing or hard to understand
 
 5. **Helpfulness** (10%): Is the response actionable and useful to the user?
-   - "I don't know" responses that suggest alternatives (rephrasing, contacting support) are helpful
-   - Score 7-9 for helpful "I don't know" responses with suggestions
+   - If the response provides useful, actionable information that helps the user, score 8-10
+   - "I don't know" responses that suggest alternatives (rephrasing, contacting support) are helpful - score 7-9
    - Score 1-3 if the response is unhelpful or misleading
 
-CRITICAL RULE: When a response honestly states it doesn't have information about a topic that's outside the knowledge base scope (e.g., cooking recipes, general knowledge questions), this is CORRECT behavior. Score it highly on accuracy (8-10) and relevance (7-9), moderately on completeness (5-7), and well on clarity and helpfulness (7-9).
+CRITICAL RULES:
+1. When a response directly answers the user's question with accurate information from the knowledge base, it should score HIGH (7-10 overall). Do NOT penalize it for not mentioning "platform" or "context" if the information is clearly relevant to the query.
+2. When a response honestly states it doesn't have information about a topic that's outside the knowledge base scope, this is CORRECT behavior. Score it highly on accuracy (8-10) and relevance (7-9), moderately on completeness (5-7), and well on clarity and helpfulness (7-9).
 
 Provide:
 - An overall score (1-10, where 10 is excellent)

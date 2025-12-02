@@ -174,13 +174,31 @@ def load_vector_store(
     collection_name = handbook_name
     
     if vector_store_type.lower() == "chroma":
+        # Check if directory exists
+        if not persist_directory.exists():
+            raise FileNotFoundError(
+                f"Vector store directory does not exist: {persist_directory}. "
+                f"Please run the indexing script to create vector stores."
+            )
+        
         vector_store = Chroma(
             persist_directory=str(persist_directory),
             embedding_function=embeddings_model,
             collection_name=collection_name,
             # collection_metadata={"hnsw:space": "cosine"}, # Use cosine similarity
         )
-        print(f"Loaded Chroma vector store from {persist_directory}")
+        
+        # Check if collection has documents
+        try:
+            collection = vector_store._collection
+            count = collection.count()
+            if count == 0:
+                print(f"WARNING: Vector store for {handbook_name} exists but is empty (0 documents)")
+            else:
+                print(f"Loaded Chroma vector store from {persist_directory} ({count} documents)")
+        except Exception as e:
+            print(f"WARNING: Could not verify document count for {handbook_name}: {e}")
+            print(f"Loaded Chroma vector store from {persist_directory}")
         
     elif vector_store_type.lower() == "faiss":
         faiss_path = persist_directory / "faiss_index"
