@@ -1,9 +1,18 @@
 """Configuration settings for the application."""
 
+import os
 from pathlib import Path
 
 # Directory paths
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+# Use current working directory as project root (works reliably on Render and local)
+# This assumes the app is run from the project root directory
+PROJECT_ROOT = Path(os.getcwd()).resolve()
+
+# Validate we're in the right place
+if not (PROJECT_ROOT / "src").exists():
+    # Fall back to relative path from this file if cwd is wrong
+    PROJECT_ROOT = Path(__file__).parent.parent.parent
+
 DATA_DIR = PROJECT_ROOT / "data"
 HANDBOOKS_DIR = DATA_DIR / "handbooks"
 OUTPUT_DIR = DATA_DIR
