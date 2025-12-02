@@ -1,4 +1,4 @@
-"""Base agent class for specialist agents using LangChain tools and agents."""
+"""Base agent class for specialist agents using LangChain LCEL chains."""
 
 import os
 from abc import ABC
@@ -6,7 +6,8 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 
 from dotenv import load_dotenv
-from langchain.agents import initialize_agent, AgentType, AgentExecutor
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 from langfuse import observe
 from langfuse.langchain import CallbackHandler
 
@@ -33,7 +34,7 @@ class AgentResponse:
 
 
 class BaseAgent(ABC):
-    """Base class for specialist agents."""
+    """Base class for specialist agents using LCEL chains."""
     
     def __init__(
         self,
@@ -68,11 +69,11 @@ class BaseAgent(ABC):
         # Store preloaded vector store or None for lazy loading
         self._vector_store = vector_store
         
-        # Get RAG tools for this agent (pass preloaded vector store)
-        self.tools = get_rag_tools_for_agent(name, handbook_name, vector_store=vector_store)
+        # Get RAG tool for this agent (pass preloaded vector store)
+        self.rag_tool = get_rag_tools_for_agent(name, handbook_name, vector_store=vector_store)[0]
         
-        # Create agent using initialize_agent with tools
-        self._create_agent_with_tools()
+        # Create LCEL chain that always uses RAG tool first
+        self._create_rag_chain()
     
     def _initialize_llm(self):
         """Initialize the LLM with Langfuse instrumentation."""
@@ -81,9 +82,12 @@ class BaseAgent(ABC):
             langfuse_handler=self.langfuse_handler
         )
     
-    def _create_agent_with_tools(self):
-        """Create agent using initialize_agent with RAG tools."""
-        system_message = f"""You are a {self.name.upper()} specialist agent for JupiterIQ, a SaaS company.
+    def _create_rag_chain(self):
+        """Create LCEL chain that always uses RAG tool first, then formats response."""
+        no_info_response = f"I don't have information about this in the {self.handbook_name} knowledge base. This question may be outside my area of expertise. Please try rephrasing your question or contact support for assistance."
+        
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", f"""You are a {self.name.upper()} specialist agent for JupiterIQ, a SaaS company.
 
 Your role: {self.description}
 
@@ -95,18 +99,23 @@ Guidelines:
 3. If the context doesn't contain enough information, say so clearly
 4. Be concise but thorough
 5. Maintain a professional, helpful tone
-6. If the query is outside your domain, acknowledge it and suggest routing to another agent"""
+6. If the query is outside your domain, acknowledge it and suggest routing to another agent"""),
+            ("human", f"""Previous conversation:
+{{conversation_history}}
+
+User question: {{query}}
+
+Retrieved context from {self.handbook_name} knowledge base:
+{{context}}
+
+Answer the user's question based ONLY on the retrieved context above. If the context says "No relevant information found in {self.handbook_name} knowledge base", you must respond: "{no_info_response}" """)
+        ])
         
-        # Initialize agent with tools using LangChain's initialize_agent
-        self.agent_executor = initialize_agent(
-            tools=self.tools,
-            llm=self.llm,
-            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-            verbose=False,
-            agent_kwargs={
-                "system_message": system_message,
-            },
-            handle_parsing_errors=True,
+        # Create LCEL chain: prompt -> LLM -> output parser
+        self.rag_chain = (
+            prompt
+            | self.llm
+            | StrOutputParser()
         )
     
     def _load_vector_store(self):
@@ -171,7 +180,7 @@ Guidelines:
         min_similarity: float = MIN_SIMILARITY,
     ) -> AgentResponse:
         """
-        Process a query and generate a response.
+        Process a query and generate a response using LCEL chain.
         
         Args:
             query: User query
@@ -191,18 +200,13 @@ Guidelines:
                     f"{msg['role'].title()}: {msg['content']}"
                     for msg in conversation_history[-5:]  # Last 5 messages
                 ])
-                full_query = f"Previous conversation:\n{history_context}\n\nCurrent question: {query}"
             else:
-                full_query = query
+                history_context = "None"
             
-            # Run agent with tools (agent will use RAG tool automatically)
-            response_content = self.agent_executor.run(
-                full_query,
-                callbacks=[self.langfuse_handler]
-            )
+            # ALWAYS call RAG tool first to get context
+            retrieved_context = self.rag_tool.run(query)
             
-            # Extract sources by retrieving context separately for metadata
-            # (The agent used the tool, but we need source details for response)
+            # Retrieve sources separately for metadata
             context_docs = self._retrieve_context(query, k=k, min_similarity=min_similarity)
             
             # Extract sources
@@ -211,10 +215,20 @@ Guidelines:
                     "content": doc["content"],  # Full content, no truncation
                     "metadata": doc["metadata"],
                     "similarity": doc["similarity"],
-                    "distance": doc.get("distance"),  # Keep for reference
+                    "distance": doc.get("distance"),  # Keep distance for reference
                 }
                 for doc in context_docs
             ]
+            
+            # Run LCEL chain with retrieved context
+            response_content = self.rag_chain.invoke(
+                {
+                    "query": query,
+                    "context": retrieved_context,
+                    "conversation_history": history_context,
+                },
+                config={"callbacks": [self.langfuse_handler]}
+            )
             
             # Metadata captured by @observe decorator
             
@@ -233,4 +247,3 @@ Guidelines:
                 sources=[],
                 metadata={"error": str(e), "error_type": type(e).__name__},
             )
-

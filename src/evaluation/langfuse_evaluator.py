@@ -77,13 +77,35 @@ class LangfuseEvaluator:
 
 Your task is to evaluate the quality of a chatbot response based on the original user query.
 
+IMPORTANT: This is a RAG system that only answers based on its knowledge base. If the response states it doesn't have information (e.g., "I don't have information about this in the knowledge base"), this is CORRECT and HONEST behavior that should be scored well, especially on accuracy and helpfulness.
+
 Evaluate the response on a scale of 1-10 based on these criteria:
 
 1. **Relevance** (30%): Does the response directly address the user's query?
+   - If the response says "I don't know" or "I don't have information", it IS relevant because it addresses the query by explaining it cannot be answered
+   - Score 7-9 for honest "I don't know" responses
+   - Score 1-3 only if the response is completely off-topic
+
 2. **Accuracy** (25%): Is the information factually correct and reliable?
+   - "I don't have information" responses are HIGHLY ACCURATE when the knowledge base truly doesn't contain the information
+   - Score 8-10 for honest "I don't know" responses (they're being truthful)
+   - Score 1-3 if the response makes up false information
+
 3. **Completeness** (20%): Does the response fully answer the query or leave important gaps?
+   - "I don't know" responses don't answer the question, but that's expected when information isn't available
+   - Score 5-7 for honest "I don't know" responses (they can't be complete without information)
+   - Score 1-3 if the response claims to answer but leaves critical gaps
+
 4. **Clarity** (15%): Is the response clear, well-structured, and easy to understand?
+   - Score based on how clearly the response communicates its limitations
+   - Score 7-10 for clear "I don't know" responses
+
 5. **Helpfulness** (10%): Is the response actionable and useful to the user?
+   - "I don't know" responses that suggest alternatives (rephrasing, contacting support) are helpful
+   - Score 7-9 for helpful "I don't know" responses with suggestions
+   - Score 1-3 if the response is unhelpful or misleading
+
+CRITICAL RULE: When a response honestly states it doesn't have information about a topic that's outside the knowledge base scope (e.g., cooking recipes, general knowledge questions), this is CORRECT behavior. Score it highly on accuracy (8-10) and relevance (7-9), moderately on completeness (5-7), and well on clarity and helpfulness (7-9).
 
 Provide:
 - An overall score (1-10, where 10 is excellent)

@@ -68,9 +68,10 @@ This report documents the architecture, design decisions, and implementation of 
                 │
                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              BASE AGENT (LangChain initialize_agent)            │
-│  • AgentExecutor with RAG Tools                                 │
-│  • Dynamic Tool Usage                                            │
+│                    BASE AGENT (LCEL Chain)                      │
+│  • Always calls RAG tool first                                  │
+│  • Deterministic tool usage                                     │
+│  • Prompt-based response formatting                             │
 └────────────────────────────┬────────────────────────────────────┘
                              │
                              ▼
@@ -127,9 +128,10 @@ The orchestrator is the brain of the system, responsible for:
 ### 2. **Specialist Agents** (`src/querying/agents/base_agent.py`)
 
 Each specialist agent:
-- Uses **LangChain's `initialize_agent`** with RAG tools
+- Uses **LangChain Expression Language (LCEL)** chains for deterministic tool usage
+- **Always calls RAG tool first** before generating responses
 - Has access to its own **domain-specific vector store**
-- Dynamically decides when to use RAG tools
+- Formats responses based on retrieved context
 - Returns responses with source citations
 
 ### 3. **RAG Tools** (`src/querying/tools/rag_tool.py`)
@@ -415,11 +417,11 @@ self.vector_store_manager = VectorStoreManager(handbook_names)
 
 ### Key LangChain Components
 
-- **`initialize_agent`**: Agent creation with tools
+- **`LCEL`**: LangChain Expression Language for chains (used for deterministic RAG flow)
 - **`Tool`**: Modular RAG functionality
-- **`LCEL`**: LangChain Expression Language for chains
 - **`ChatPromptTemplate`**: Structured prompt management
 - **`CallbackHandler`**: Langfuse integration
+- **`StrOutputParser`**: Response parsing
 
 ### Architecture Patterns
 
@@ -594,7 +596,7 @@ The Langfuse dashboard provides comprehensive observability into every aspect of
   - `orchestrator_detect_multi_agent` (2.61s)
     - `RunnableSequence` → `ChatPromptTemplate` → `ChatOpenAI` → `JsonOutputParser`
   - `agent_process_query` (6.12s)
-    - `AgentExecutor` → `LLMChain` → RAG Tool execution
+    - RAG Tool execution → `LCEL Chain` → `ChatPromptTemplate` → `ChatOpenAI` → `StrOutputParser`
 
 **Scores:**
 - Quality scores automatically linked to traces
@@ -615,18 +617,18 @@ The Observations view provides a granular, step-by-step breakdown of every compo
 
 ![Langfuse Observations Dashboard](langfuse_observations_dashboard.png)
 
-*Figure: Langfuse Observations dashboard showing detailed execution steps including `langfuse_evaluator_score_response` with quality scores (9.0), `AgentExecutor`, `finance_rag_search` tool calls, `ChatOpenAI` LLM invocations, and `LLMChain` operations. Each observation shows input/output data, timestamps, and component types.*
+*Figure: Langfuse Observations dashboard showing detailed execution steps including `langfuse_evaluator_score_response` with quality scores (9.0), RAG tool calls, `ChatOpenAI` LLM invocations, and LCEL chain operations. Each observation shows input/output data, timestamps, and component types.*
 
 **Key Observations Shown:**
 - **Evaluator Execution**: `langfuse_evaluator_score_response` entries showing automatic quality scoring (e.g., score: 9.0) with reasoning
-- **Agent Operations**: `AgentExecutor` observations showing agent decision-making process
 - **RAG Tool Calls**: Tool executions like `finance_rag_search` with similarity scores and retrieved context
-- **LLM Invocations**: `ChatOpenAI` and `LLMChain` observations showing prompt inputs and generated outputs
+- **LCEL Chain Operations**: Chain executions showing prompt inputs and generated outputs
+- **LLM Invocations**: `ChatOpenAI` observations showing prompt inputs and generated outputs
 - **Orchestrator Steps**: `orchestrator_detect_multi_agent` and `orchestrator_process_query` showing routing decisions
-- **Component Types**: Visual icons distinguish between agents, tools, chains, and custom spans
+- **Component Types**: Visual icons distinguish between tools, chains, LLMs, and custom spans
 
 **Filtering & Analysis:**
-- Filter by component type (AgentExecutor, ChatOpenAI, Tool, etc.)
+- Filter by component type (ChatOpenAI, Tool, RunnableSequence, etc.)
 - Filter by name, trace name, level, model, and metadata
 - Search across all observations
 - View input/output for each step to understand data flow

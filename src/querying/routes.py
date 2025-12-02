@@ -96,19 +96,25 @@ def setup_query_routes(orchestrator: Orchestrator):
             # Extract all sources from agent responses
             all_sources = []
             for agent_response in response.responses:
-                for source in agent_response.sources:
-                    all_sources.append(
-                        SourceResponse(
-                            content=source.get("content", ""),
-                            metadata=source.get("metadata", {}),
-                            similarity=source.get("similarity", 0.0),
-                            distance=source.get("distance"),
+                if agent_response.sources:
+                    for source in agent_response.sources:
+                        all_sources.append(
+                            SourceResponse(
+                                content=source.get("content", ""),
+                                metadata=source.get("metadata", {}),
+                                similarity=source.get("similarity", 0.0),
+                                distance=source.get("distance"),
+                            )
                         )
-                    )
             
             # Extract quality score from metadata if available
             quality_score = response.metadata.get("quality_score")
             quality_reasoning = response.metadata.get("quality_reasoning")
+            
+            # Build metadata without duplicates (remove quality_score, quality_reasoning, routing_mode from metadata)
+            # since they're at the top level
+            metadata_clean = {k: v for k, v in response.metadata.items() 
+                            if k not in ["quality_score", "quality_reasoning", "routing_mode"]}
             
             # Build response
             return QueryResponse(
@@ -116,10 +122,7 @@ def setup_query_routes(orchestrator: Orchestrator):
                 agents_used=response.agents_used,
                 routing_mode=response.routing_mode.value,
                 sources=all_sources,
-                metadata={
-                    **response.metadata,
-                    "routing_mode": response.routing_mode.value,
-                },
+                metadata=metadata_clean,
                 session_id=session_id,  # Use auto-generated session_id
                 quality_score=quality_score,
                 quality_reasoning=quality_reasoning,
