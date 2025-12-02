@@ -52,16 +52,29 @@ def create_rag_tool(
         # Use preloaded vector store if available, otherwise load on demand
         if _store is None:
             from indexing.embeddings import load_vector_store
-            store = load_vector_store(handbook_name)
+            try:
+                store = load_vector_store(handbook_name)
+            except Exception as e:
+                print(f"Error loading vector store for {handbook_name}: {e}")
+                return f"No relevant information found in {handbook_name} knowledge base."
         else:
             store = _store
+        
+        # Check if store is valid
+        if store is None:
+            print(f"Vector store for {handbook_name} is None")
+            return f"No relevant information found in {handbook_name} knowledge base."
         
         # Use default k and min_similarity (can be made configurable later)
         k = 4
         min_similarity = MIN_SIMILARITY
         
         # Retrieve documents
-        docs = store.similarity_search_with_score(query, k=k * 2)
+        try:
+            docs = store.similarity_search_with_score(query, k=k * 2)
+        except Exception as e:
+            print(f"Error searching vector store for {handbook_name}: {e}")
+            return f"No relevant information found in {handbook_name} knowledge base."
         
         # Convert distance to similarity and filter
         context_docs = []
