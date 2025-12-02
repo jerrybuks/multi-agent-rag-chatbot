@@ -18,14 +18,14 @@ class QueryRequest(BaseModel):
         ge=0.0,
         le=1.0,
         description="Minimum similarity threshold (0.0 to 1.0) for retrieved context. Defaults to config value.",
-        example=0.78
+        example=MIN_SIMILARITY
     )
     
     class Config:
         json_schema_extra = {
             "example": {
                 "query": "How do I update my payment method for my subscription?",
-                "min_similarity": 0.78
+                "min_similarity": MIN_SIMILARITY
             }
         }
 

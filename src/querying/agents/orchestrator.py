@@ -21,7 +21,7 @@ from langfuse.langchain import CallbackHandler
 # Load environment variables
 load_dotenv()
 
-from config import LLM_MODEL
+from config import LLM_MODEL, DEFAULT_K
 from querying.agents.specialist_agents import create_agent, BaseAgent
 from querying.agents.base_agent import AgentResponse
 from querying.tools.vector_store_manager import VectorStoreManager
@@ -488,7 +488,7 @@ Examples:
         for agent_name in agent_names:
             try:
                 agent = self._get_agent_instance(agent_name)
-                response = agent.process_query(query, current_history, k=4, min_similarity=min_similarity)
+                response = agent.process_query(query, current_history, k=DEFAULT_K, min_similarity=min_similarity)
                 responses.append(response)
                 
                 # Add response to history for next agent
@@ -606,7 +606,7 @@ Examples:
                     agent_name = agent_names[0]
                 
                 agent = self._get_agent_instance(agent_name)
-                response = agent.process_query(query, conversation_history, k=4, min_similarity=min_similarity)
+                response = agent.process_query(query, conversation_history, k=DEFAULT_K, min_similarity=min_similarity)
                 responses = [response]
                 agent_names = [agent_name]
             
@@ -664,7 +664,7 @@ Examples:
             fallback_response = fallback_agent.process_query(
                 query,
                 context.get_recent_history(),
-                k=4,
+                k=DEFAULT_K,
                 min_similarity=min_similarity,
             )
             

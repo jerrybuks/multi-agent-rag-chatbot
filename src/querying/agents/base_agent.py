@@ -18,7 +18,7 @@ from typing import Optional, Union
 from langchain_chroma import Chroma
 from langchain_community.vectorstores import FAISS
 
-from config import LLM_MODEL, MIN_SIMILARITY
+from config import LLM_MODEL, MIN_SIMILARITY, DEFAULT_K
 from indexing.embeddings import load_vector_store
 from querying.tools.rag_tool import get_rag_tools_for_agent
 from utils.llm import initialize_llm
@@ -127,47 +127,54 @@ Answer the user's question based ONLY on the retrieved context above. If the con
     def _retrieve_context(
         self, 
         query: str, 
-        k: int = 4,
+        k: int = DEFAULT_K,
         min_similarity: float = MIN_SIMILARITY
     ) -> List[Dict[str, Any]]:
         """
         Retrieve relevant context from the vector store.
+        
+        Uses same logic as RAG tool: retrieves k*2, filters by similarity, 
+        deduplicates, returns top k. Ensures sources match what LLM uses.
         
         Chroma returns cosine distance (0 = identical, 2 = opposite).
         We convert to similarity: similarity = 1 - distance
         
         Args:
             query: User query
-            k: Number of documents to retrieve
+            k: Number of documents to retrieve (final count after filtering)
             min_similarity: Minimum similarity threshold (0.0 to 1.0). 
                           Defaults to config MIN_SIMILARITY.
             
         Returns:
-            List of retrieved documents with metadata, filtered by min_similarity
+            List of retrieved documents with metadata, filtered and deduplicated
         """
         
         vector_store = self._load_vector_store()
         
-        # Retrieve relevant documents (Chroma returns cosine distance)
-        docs = vector_store.similarity_search_with_score(query, k=k)
+        # Retrieve k*2 documents (same as RAG tool)
+        docs = vector_store.similarity_search_with_score(query, k=k * 2)
         
-        # Format for context and convert distance to similarity
+        # Filter, deduplicate, and return top k (same logic as RAG tool)
         context_docs = []
+        seen_content = set()
+        
         for doc, distance in docs:
-            # Convert cosine distance to similarity
-            # For cosine: similarity = 1 - distance
-            # Distance range: 0 (identical) to 2 (opposite)
-            # Similarity range: 1 (identical) to -1 (opposite)
             similarity = 1.0 - float(distance)
             
-            # Filter by minimum similarity threshold
             if similarity >= min_similarity:
-                context_docs.append({
-                    "content": doc.page_content,
-                    "metadata": doc.metadata,
-                    "similarity": similarity,
-                    "distance": float(distance),  # Keep distance for reference
-                })
+                content_normalized = doc.page_content.strip()
+                
+                if content_normalized not in seen_content:
+                    seen_content.add(content_normalized)
+                    context_docs.append({
+                        "content": doc.page_content,
+                        "metadata": doc.metadata,
+                        "similarity": similarity,
+                        "distance": float(distance),
+                    })
+                    
+                    if len(context_docs) >= k:
+                        break
         
         return context_docs
     
@@ -176,7 +183,7 @@ Answer the user's question based ONLY on the retrieved context above. If the con
         self,
         query: str,
         conversation_history: Optional[List[Dict[str, str]]] = None,
-        k: int = 4,
+        k: int = DEFAULT_K,
         min_similarity: float = MIN_SIMILARITY,
     ) -> AgentResponse:
         """
@@ -203,23 +210,27 @@ Answer the user's question based ONLY on the retrieved context above. If the con
             else:
                 history_context = "None"
             
-            # ALWAYS call RAG tool first to get context
-            retrieved_context = self.rag_tool.run(query)
-            
-            # Retrieve sources separately for metadata
+            # Single retrieval call - get documents once
             context_docs = self._retrieve_context(query, k=k, min_similarity=min_similarity)
             
-            # Log if no sources found (for debugging)
+            # Format context for LLM (same format as RAG tool)
             if not context_docs:
-                print(f"WARNING: No sources found for query '{query}' in {self.handbook_name} with min_similarity={min_similarity}")
+                retrieved_context = f"No relevant information found in {self.handbook_name} knowledge base."
+            else:
+                context_parts = []
+                for i, doc in enumerate(context_docs, 1):
+                    context_parts.append(
+                        f"[Source {i}] (Similarity: {doc['similarity']:.2f})\n{doc['content']}"
+                    )
+                retrieved_context = "\n\n".join(context_parts)
             
-            # Extract sources
+            # Use same documents for sources
             sources = [
                 {
-                    "content": doc["content"],  # Full content, no truncation
+                    "content": doc["content"],
                     "metadata": doc["metadata"],
                     "similarity": doc["similarity"],
-                    "distance": doc.get("distance"),  # Keep distance for reference
+                    "distance": doc.get("distance"),
                 }
                 for doc in context_docs
             ]

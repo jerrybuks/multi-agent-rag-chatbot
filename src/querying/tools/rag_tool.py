@@ -9,7 +9,7 @@ try:
 except ImportError:
     from pydantic import BaseModel, Field
 
-from config import MIN_SIMILARITY
+from config import MIN_SIMILARITY, DEFAULT_K
 
 
 class RAGToolInput(BaseModel):
@@ -66,7 +66,7 @@ def create_rag_tool(
             return f"No relevant information found in {handbook_name} knowledge base."
         
         # Use default k and min_similarity (can be made configurable later)
-        k = 4
+        k = DEFAULT_K
         min_similarity = MIN_SIMILARITY
         
         # Retrieve documents
